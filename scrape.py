@@ -1,7 +1,8 @@
 import requests, json, time, os
 from datetime import datetime
 from bs4 import BeautifulSoup
-from extractors import extract_from_craigslist
+import extractors as get
+import db_func
 
 results_url = 'https://portland.craigslist.org/d/software-qa-dba-etc/search/sof'
 results_page = requests.get(results_url)
@@ -15,19 +16,22 @@ file_count = 0
 for h in job_headings:
 	anchor = h.a
 	link = anchor['href']
-	
-	time.sleep(2)
 
-	job_dict = extract_from_craigslist(link) 
+	page_soup = get.get_soup(link)
+	id = get.get_post_id(page_soup)
+	post_ids = db_func.get_post_ids()
 
-	if job_dict is not None:
-		filename = job_dict['site'] + '-' + job_dict['post_id'] + '.json'
+	if id not in post_ids:
+		time.sleep(2)
+		job_dict = get.extract_from_craigslist(link)
+
 		extant_files = os.listdir('extracted-files')
+		job_filename = get.get_filename(soup)
 
-		if filename not in extant_files:
+		if job_filename not in extant_files:
 			file = open('extracted-files/' + filename, 'x', encoding='utf-8')
 			file.write(json.dumps(job_dict))
-			file.close()	
+			file.close()
 			file_count += 1
 
 end_time = datetime.now()
