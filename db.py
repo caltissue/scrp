@@ -32,6 +32,7 @@ INSERT INTO jobs_craigslist (
 
 '''
 
+# swap the loop into the try block to avoid opening a new cnxn every time
 for p in posts:
 	values = ''
 	values += '('
