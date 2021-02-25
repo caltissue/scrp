@@ -38,7 +38,7 @@ for p in posts:
 	values += "'" +  p['site'] + "',"
 	values += "'" +  p['title'] + "',"
 	values += "'" +  p['location'] + "',"
-	values += "'" +  p['body'].replace("'", "\'") + "',"
+	values += "'" +  p['body']+ "',"
 	values += "'" +  p['time'] + "',"
 	values += "'" +  p['post_id'] + "',"
 	values += '1' # times_encountered; we will check/increment this later
@@ -50,7 +50,7 @@ for p in posts:
 		with connect(
 			host="localhost",
 			user="root",
-			password="!H3ll4s3cur3", # just put this in an env var and import it
+			password=getpass("pw: "), # just put this in an env var and import it
 			database="scrp",
 		) as connection:
 			with connection.cursor() as cursor:
