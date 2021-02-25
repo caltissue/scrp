@@ -1,4 +1,5 @@
 import requests, json, functools
+from datetime import datetime
 from bs4 import BeautifulSoup, element
 from bs4.element import Tag
 
@@ -45,13 +46,16 @@ def extract_from_craigslist(link): # string link; returns dict
 					bodystring += str(d)
 				
 	time = soup.find(class_='date timeago')
+	time_contents = time.contents[0].strip(" \n")
+	time_contents_as_datetime = datetime.strptime(time_contents, '%Y-%m-%d %H:%M')
+	time_string = str(time_contents_as_datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
 	job_desc = {
 		'site': 'craigslist',
-		'title': title.contents[0],
+		'title': title.contents[0].replace("'", ""),
 		'location': location,
-		'body': bodystring,
-		'time': time.contents[0].strip(" \n"),
+		'body': bodystring.replace("'", ""),
+		'time': time_string,
 		'post_id': post_id,
 	}
 	return job_desc

@@ -25,7 +25,7 @@ for h in job_headings:
 		extant_files = os.listdir('extracted-files')
 
 		if filename not in extant_files:
-			file = open('extracted-files/' + filename, 'x')
+			file = open('extracted-files/' + filename, 'x', encoding='utf-8')
 			file.write(json.dumps(job_dict))
 			file.close()	
 			file_count += 1
