@@ -32,7 +32,6 @@ INSERT INTO jobs_craigslist (
 
 '''
 
-# swap these around so we don't have to open a new db connection every time
 for p in posts:
 	values = ''
 	values += '('
