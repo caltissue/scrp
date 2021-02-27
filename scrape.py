@@ -1,38 +1,61 @@
-import requests, json, time, os
+import requests, json, time, os, db_func
+import extractors as get
 from datetime import datetime
 from bs4 import BeautifulSoup
-import extractors as get
-import db_func
+from mysql.connector import connect, Error
 
-results_url = 'https://portland.craigslist.org/d/software-qa-dba-etc/search/sof'
-results_page = requests.get(results_url)
-soup = BeautifulSoup(results_page.content, "html.parser")
-
-job_headings = soup.find_all('h3', class_='result-heading')
-
+filefolder = 'logs/extracted-files'
+errorfolder = 'logs/error'
 start_time = datetime.now()
+
+boards = {
+	'craigslist portland software': 'https://portland.craigslist.org/d/software-qa-dba-etc/search/sof',
+	'craigslist portland sys/network': 'https://portland.craigslist.org/d/systems-networking/search/sad',
+	'craigslist portland web': 'https://portland.craigslist.org/d/web-html-info-design/search/web',
+}
+
+'''
+SCRAPE & WRITE
+'''
+print('scraping...')
+
+extant_files = os.listdir(filefolder)
+json_files = []
+for f in extant_files:
+	if '.json' in f:
+		json_files.append(f)
+
+job_headings = []
+for board in boards.keys():
+	results_page = requests.get(boards[board])
+	soup = BeautifulSoup(results_page.content, "html.parser")
+
+	job_headings += soup.find_all('h3', class_='result-heading')
+
 file_count = 0
+post_ids = db_func.get_post_ids()
 
 for h in job_headings:
 	anchor = h.a
 	link = anchor['href']
 
-	page_soup = get.get_soup(link)
-	id = get.get_post_id(page_soup)
-	post_ids = db_func.get_post_ids()
+	id = get.get_post_id_substr(link)
 
 	if id not in post_ids:
-		time.sleep(2)
+		# sometimes we write files and then our insert fails
+		filename = get.get_filename_link(link)
+		if os.path.exists(filefolder + '/' + filename):
+			continue
+
+		# here we know the file doesn't exist already
 		job_dict = get.extract_from_craigslist(link)
+		file = open(filefolder + '/' + filename, 'x')
+		file.write(json.dumps(job_dict))
+		file.close()
+		json_files.append(job_dict['filename'])
 
-		extant_files = os.listdir('extracted-files')
-		job_filename = get.get_filename(soup)
-
-		if job_filename not in extant_files:
-			file = open('extracted-files/' + filename, 'x', encoding='utf-8')
-			file.write(json.dumps(job_dict))
-			file.close()
-			file_count += 1
+		file_count += 1
+		time.sleep(2)
 
 end_time = datetime.now()
 
@@ -47,3 +70,22 @@ result_string += "\n============================="
 logfile = open("logs/scrapelog.txt", "a")
 logfile.write(result_string)
 logfile.close()
+
+'''
+DB INSERT
+'''
+print('checking & inserting...')
+# this is a separate step for ease of debugging
+for f in json_files:
+	filename = filefolder + '/' + f # os can concat these
+	file = open(filename, 'r')
+	job = json.loads(file.read()) # becomes dict
+	file.close()
+
+	match_id = db_func.existing_match(job) # check for same post w new id
+	if match_id:
+		db_func.increment_encounters(match_id)
+		if os.path.exists(filename):
+			os.remove(filename)
+	else:
+		db_func.insert_post(job)

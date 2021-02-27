@@ -4,28 +4,39 @@ from bs4 import BeautifulSoup, element
 from bs4.element import Tag
 import db_func
 
-# extract function that returns soup from link
-# dict function that returns dict from soup
-# id function that gives id from soup
-
 def get_soup(link): # string link; returns soup
 	job_page = requests.get(link)
 	soup = BeautifulSoup(job_page.content, 'html.parser')
 	return soup
 
+# TODO: delete
 def get_post_id(soup): # BeautifulSoup object soup; returns int
 	post_infos = soup.find(class_='postinginfos')
 	id_p = post_infos.p
 	post_id = id_p.contents[0].strip("post id:")
 	return post_id
 
+def get_post_id_substr(link):
+	rev = link[::-1]
+	rev_cut = rev[rev.index('.') + 1 : rev.index('/')]
+	id = rev_cut[::-1]
+	return id
+
+def get_filename_link(link):
+	sitename = 'craigslist' # eventually we'll have a dict key
+	post_id = get_post_id_substr(link)
+	filename = sitename + '-' + post_id + '.json'
+	return filename
+
 def get_filename(soup):
-	sitename = 'craigslist'
+	sitename = 'craigslist' # eventually we'll have a dict key
 	post_id = get_post_id(soup)
 	filename = sitename + '-' + post_id + '.json'
 	return filename
 
-def extract_from_craigslist(soup): # BeautifulSoup object soup; returns dict
+def extract_from_craigslist(link): # string link; returns dict
+	soup = get_soup(link)
+
 	title = soup.find(id='titletextonly')
 	super_title = soup.find(class_='postingtitletext')
 	location = "not listed"
