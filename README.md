@@ -10,7 +10,7 @@ I'm working with Python 3.8, MySQL 8.0, and Flask 1.1 for the web backend. I hav
 
 Come back soon! Connect with me on [Twitter](https://twitter.com/CalTissue) if you want to get involved somehow.
 
-##### Missing log folders
+##### Missing logs/files
 
 You'll notice that there are missing log folders. I may add an init function eventually to set up the final folder structure, but for now it's evolving. Here's the current structure:
 ```
@@ -21,3 +21,17 @@ logs/
   verbose-scrapelog/
 ```
 If you create those folders SCRP will log things correctly.
+
+You'll also want a `boards.json` file in the main folder. The file has a dict like this:
+```
+{
+  "craigslist portland software": "https://portland.craigslist.org/d/software-qa-dba-etc/search/sof",
+  ...
+}
+```
+
+I'm adding these as I go. Extend this dict within the python shell.
+
+##### DB schema
+
+See the mysqldump file for a (probably) up-to-date list of `CREATE table` statements that correspond to the current version of the database I'm using.

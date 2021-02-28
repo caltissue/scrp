@@ -10,11 +10,9 @@ errorfolder = 'logs/error'
 logfolder = 'logs/verbose-scrapelog'
 start_time = datetime.now()
 
-boards = {
-	'craigslist portland software': 'https://portland.craigslist.org/d/software-qa-dba-etc/search/sof',
-	'craigslist portland sys/network': 'https://portland.craigslist.org/d/systems-networking/search/sad',
-	'craigslist portland web': 'https://portland.craigslist.org/d/web-html-info-design/search/web',
-}
+boardfile = open('boards.json', 'r')
+boards = json.loads(boardfile.read())
+boardfile.close()
 
 '''
 SCRAPE & WRITE
@@ -37,18 +35,24 @@ for f in extant_files:
 scrapelog_file.write('\n-----------')
 
 scrapelog_file.write('\n== scrape begins ==\n')
-job_headings = []
+jobs_results = []
 for board in boards.keys():
 	results_page = requests.get(boards[board])
 	soup = BeautifulSoup(results_page.content, "html.parser")
 
-	job_headings += soup.find_all('h3', class_='result-heading')
+	board_results = soup.find_all('h3', class_='result-heading')
+	for result in board_results:
+		jobs_results.append({
+			'board': board,
+			'result': result
+		})
 
 file_count = 0
 post_ids = db.get_all_post_ids(including_reposts=True)
 
-for h in job_headings:
-	anchor = h.a
+for r in jobs_results:
+	board = r['board']
+	anchor = r['result'].a
 	link = anchor['href']
 	scrapelog_file.write('\njob link: ' + link)
 
@@ -56,14 +60,17 @@ for h in job_headings:
 	scrapelog_file.write('\nwith id: ' + str(id))
 	if id not in post_ids:
 		# sometimes we write files and then our insert fails
-		filename = get.filename(link)
+		filename = board.replace(' ', '-') + '-' + get.filename(link)
 		scrapelog_file.write('\ngenerated filename: ' + filename)
 		if os.path.exists(filefolder + '/' + filename):
 			scrapelog_file.write('\nfile exists, skipping\n\n')
 			continue
 
-		# here we know the file doesn't exist already
+		# here, we know the file doesn't exist already
 		job_dict = get.job_description(link)
+		job_dict['site'] = board
+		job_dict['filename'] = filename
+		job_dict['link'] = link
 		file = open(filefolder + '/' + filename, 'x')
 		file.write(json.dumps(job_dict))
 		file.close()
@@ -71,7 +78,7 @@ for h in job_headings:
 		json_files.append(job_dict['filename'])
 
 		file_count += 1
-		scrapelog_file.write('\nfile count: ' + file_count)
+		scrapelog_file.write('\nfile count: ' + str(file_count))
 		time.sleep(2)
 	else:
 		scrapelog_file.write('\npost_id already exists in db')
@@ -115,6 +122,6 @@ for f in json_files:
 	else:
 		scrapelog_file.write('\nthis is a new post; inserting')
 		db.add_post(job)
-		
+
 scrapelog_file.write('\n== insert ends ==\n')
 scrapelog_file.close()

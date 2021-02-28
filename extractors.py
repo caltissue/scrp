@@ -8,13 +8,11 @@ def post_id(link):
 	return link[link.rindex('/') + 1 : link.index('.html')]
 
 def filename(link):
-	sitename = 'craigslist' # eventually we'll have a dict key
-	post_id = post_id(link)
-	return sitename + '-' + post_id + '.json'
+	id = post_id(link)
+	return sitename + '-' + id + '.json'
 
 def job_description(link): # string link; returns dict
-	post_id = post_id(link)
-	filename = filename(link)
+	id = post_id(link)
 
 	job_page = requests.get(link)
 	soup = BeautifulSoup(job_page.content, 'html.parser')
@@ -42,15 +40,11 @@ def job_description(link): # string link; returns dict
 	time_contents_as_datetime = datetime.strptime(time_contents, '%Y-%m-%d %H:%M')
 	time_string = str(time_contents_as_datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
-	sitename = 'craigslist'
-
 	job_desc = {
-		'site': sitename,
 		'title': title.contents[0].replace("'", ""),
 		'location': location,
 		'body': bodystring.replace("'", ""),
 		'time': time_string,
-		'post_id': post_id,
-		'filename': filename,
+		'post_id': id,
 	}
 	return job_desc

@@ -3,7 +3,7 @@ import os
 from difflib import SequenceMatcher
 
 def get_all_post_ids(including_reposts):
-    query = 'SELECT post_id FROM jobs_craigslist'
+    query = 'SELECT post_id FROM craigslist_jobs'
     if including_reposts:
         query += ' UNION SELECT post_id FROM craigslist_reposts'
 
@@ -25,7 +25,7 @@ def get_all_post_ids(including_reposts):
 
     return ids
 
-def existing_match(newpost): # dict newpost; returns id of match if any
+def get_previous_post_id(newpost): # dict newpost; returns id of match if any
     posts = []
 
     try:
@@ -35,7 +35,7 @@ def existing_match(newpost): # dict newpost; returns id of match if any
             password=os.getenv('DB_PASS'),
             database='scrp',
         ) as connection:
-            query = 'SELECT post_id, title, body FROM jobs_craigslist'
+            query = 'SELECT post_id, title, body FROM craigslist_jobs'
             with connection.cursor() as cursor:
                 cursor.execute(query)
                 for t in cursor.fetchall():
@@ -52,9 +52,9 @@ def existing_match(newpost): # dict newpost; returns id of match if any
                 return p['post_id']
     return ''
 
-def add_repost(original_id, repost_id):
+def note_repost(original_id, repost_id):
     update = '''
-    UPDATE jobs_craigslist
+    UPDATE craigslist_jobs
     SET times_encountered = times_encountered + 1
     WHERE post_id = '%s'
     '''
@@ -76,9 +76,9 @@ def add_repost(original_id, repost_id):
     except Error as e:
         print(e)
 
-def insert_post(p): # dict post
+def add_post(p): # dict post
     base_query = '''
-    INSERT INTO jobs_craigslist
+    INSERT INTO craigslist_jobs
     (site, title, location, body, time, post_id, times_encountered)
     VALUES
     ('%s', '%s', '%s', '%s', '%s', '%s', '%s')
