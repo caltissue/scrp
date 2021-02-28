@@ -1,6 +1,6 @@
 # SCRP
 
-SCRP is a data blog about my job search. We'll be gathering info from job boards, which we'll sort, transform, and try to gain insights from. Everything we learn will be available through an interactive site, where users can learn, interact, and provide feedback. 
+SCRP is a data blog about my job search. We'll be gathering info from job boards, which we'll sort, transform, and try to gain insights from. Everything we learn will be available through an interactive site, where users can learn, interact, and provide feedback.
 
 We're starting with Craigslist, because the HTML is relatively simple. Ideally we'll hit Indeed, Monster, and GitHub, and more.
 
@@ -10,6 +10,14 @@ I'm working with Python 3.8, MySQL 8.0, and Flask 1.1 for the web backend. I hav
 
 Come back soon! Connect with me on [Twitter](https://twitter.com/CalTissue) if you want to get involved somehow.
 
-##### Missing folders
+##### Missing log folders
 
-If you check out the core app functions you'll notice there are log files & folders missing from the repo. I don't want to include the actual data in the repo, because a) they're log files, and b) it's all going into a MySql db to live permanently. If you want to clone the repo, add the folders and you'll be all good.
+You'll notice that there are missing log folders. I may add an init function eventually to set up the final folder structure, but for now it's evolving. Here's the current structure:
+```
+logs/
+  error/
+  extracted-files/
+  scrapelog.txt
+  verbose-scrapelog/
+```
+If you create those folders SCRP will log things correctly.

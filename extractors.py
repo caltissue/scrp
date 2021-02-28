@@ -4,38 +4,20 @@ from bs4 import BeautifulSoup, element
 from bs4.element import Tag
 import db_func
 
-def get_soup(link): # string link; returns soup
+def post_id(link):
+	return link[link.rindex('/') + 1 : link.index('.html')]
+
+def filename(link):
+	sitename = 'craigslist' # eventually we'll have a dict key
+	post_id = post_id(link)
+	return sitename + '-' + post_id + '.json'
+
+def job_description(link): # string link; returns dict
+	post_id = post_id(link)
+	filename = filename(link)
+
 	job_page = requests.get(link)
 	soup = BeautifulSoup(job_page.content, 'html.parser')
-	return soup
-
-# TODO: delete
-def get_post_id(soup): # BeautifulSoup object soup; returns int
-	post_infos = soup.find(class_='postinginfos')
-	id_p = post_infos.p
-	post_id = id_p.contents[0].strip("post id:")
-	return post_id
-
-def get_post_id_substr(link):
-	rev = link[::-1]
-	rev_cut = rev[rev.index('.') + 1 : rev.index('/')]
-	id = rev_cut[::-1]
-	return id
-
-def get_filename_link(link):
-	sitename = 'craigslist' # eventually we'll have a dict key
-	post_id = get_post_id_substr(link)
-	filename = sitename + '-' + post_id + '.json'
-	return filename
-
-def get_filename(soup):
-	sitename = 'craigslist' # eventually we'll have a dict key
-	post_id = get_post_id(soup)
-	filename = sitename + '-' + post_id + '.json'
-	return filename
-
-def extract_from_craigslist(link): # string link; returns dict
-	soup = get_soup(link)
 
 	title = soup.find(id='titletextonly')
 	super_title = soup.find(class_='postingtitletext')
@@ -61,7 +43,6 @@ def extract_from_craigslist(link): # string link; returns dict
 	time_string = str(time_contents_as_datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
 	sitename = 'craigslist'
-	post_id = get_post_id(soup)
 
 	job_desc = {
 		'site': sitename,
@@ -70,6 +51,6 @@ def extract_from_craigslist(link): # string link; returns dict
 		'body': bodystring.replace("'", ""),
 		'time': time_string,
 		'post_id': post_id,
-		'filename': get_filename(soup)
+		'filename': filename,
 	}
 	return job_desc
