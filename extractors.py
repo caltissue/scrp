@@ -9,7 +9,7 @@ def post_id(link):
 
 def filename(link):
 	id = post_id(link)
-	return sitename + '-' + id + '.json'
+	return id + '.json'
 
 def job_description(link): # string link; returns dict
 	id = post_id(link)

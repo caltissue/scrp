@@ -2,6 +2,57 @@ from mysql.connector import connect, Error
 import os
 from difflib import SequenceMatcher
 
+def truncate_table(table):
+    try:
+        with connect(
+            host='localhost',
+            user='root',
+            password=os.getenv('DB_PASS'),
+            database='scrp'
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute('TRUNCATE TABLE %s' % table)
+                connection.commit()
+    except Error as e:
+        print(e)
+
+def get_dataset_as_list(query):
+    list = []
+    try:
+        with connect(
+            host='localhost',
+            user='root',
+            password=os.getenv('DB_PASS'),
+            database='scrp'
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                for r in cursor.fetchall():
+                    list.append(r)
+    except Error as e:
+        print(e)
+
+    return list
+
+def insert_records_from_tuples(list, table): # list of tuples
+    query = '''
+    INSERT INTO %s (count, word)
+    VALUES ( %s, '%s' )
+    '''
+    try:
+        with connect(
+            host='localhost',
+            user='root',
+            password=os.getenv('DB_PASS'),
+            database='scrp'
+        ) as connection:
+            with connection.cursor() as cursor:
+                for t in list:
+                    cursor.execute(query % (table, str(t[0]), t[1]))
+                connection.commit()
+    except Error as e:
+        print(e)
+
 def get_all_post_ids(including_reposts):
     query = 'SELECT post_id FROM craigslist_jobs'
     if including_reposts:

@@ -1,6 +1,7 @@
 import requests, json, time, os
 import extractors as get
 import db_func as db
+import analytics
 from datetime import datetime
 from bs4 import BeautifulSoup
 from mysql.connector import connect, Error
@@ -63,7 +64,7 @@ for r in jobs_results:
 		filename = board.replace(' ', '-') + '-' + get.filename(link)
 		scrapelog_file.write('\ngenerated filename: ' + filename)
 		if os.path.exists(filefolder + '/' + filename):
-			scrapelog_file.write('\nfile exists, skipping\n\n')
+			scrapelog_file.write('\nfile exists, skipping\n')
 			continue
 
 		# here, we know the file doesn't exist already
@@ -125,3 +126,15 @@ for f in json_files:
 
 scrapelog_file.write('\n== insert ends ==\n')
 scrapelog_file.close()
+
+'''
+ANALYTICS
+'''
+print('running analytics...')
+db.truncate_table('wordcount_title')
+db.truncate_table('wordcount_body')
+
+titlewords = analytics.wordcount('title')
+db.insert_records_from_tuples(titlewords, 'wordcount_title')
+bodywords = analytics.wordcount('body')
+db.insert_records_from_tuples(bodywords, 'wordcount_body')
