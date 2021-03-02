@@ -53,6 +53,25 @@ def insert_records_from_tuples(list, table): # list of tuples
     except Error as e:
         print(e)
 
+def insert_wordpair_counts(wordpairs):
+    query = '''
+    INSERT INTO wordpairs (word1, word2, count)
+    VALUES ( '%s', '%s', %s )
+    '''
+    try:
+        with connect(
+            host='localhost',
+            user='root',
+            password=os.getenv('DB_PASS'),
+            database='scrp'
+        ) as connection:
+            with connection.cursor() as cursor:
+                for t in wordpairs:
+                    cursor.execute(query % (t[0], t[1], wordpairs[t]))
+                connection.commit()
+    except Error as e:
+        print(e)
+
 def get_all_post_ids(including_reposts):
     query = 'SELECT post_id FROM craigslist_jobs'
     if including_reposts:
