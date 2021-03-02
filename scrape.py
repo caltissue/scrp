@@ -125,6 +125,7 @@ for f in json_files:
 		db.add_post(job)
 
 scrapelog_file.write('\n== insert ends ==\n')
+scrapelog_file.close()
 
 '''
 ANALYTICS
@@ -132,20 +133,8 @@ ANALYTICS
 print('running analytics...')
 db.truncate_table('wordcount_title')
 db.truncate_table('wordcount_body')
-db.truncate_table('wordpairs')
 
 titlewords = analytics.wordcount('title')
 db.insert_records_from_tuples(titlewords, 'wordcount_title')
-scrapelog_file.write('\ninserted title wordcounts')
-
 bodywords = analytics.wordcount('body')
 db.insert_records_from_tuples(bodywords, 'wordcount_body')
-scrapelog_file.write('\ninserted body wordcounts')
-
-print('starting crossjoin at ', datetime.now())
-wordpairs = analytics.word_pairs()
-db.insert_wordpair_counts(wordpairs)
-scrapelog_file.write('\ninserted wordpair crossjoin counts')
-
-scrapelog_file.close()
-print('finished at ', datetime.now())
