@@ -36,28 +36,22 @@ def word_pairs():
 
     for b in post_bodies:
         body = b[0]
-        junk_chars = junk_char_list()
-        for char in junk_chars:
-            body = body.replace(char, ' ')
+        for c in junk_char_list(): body = body.replace(c, ' ')
         body = body.lower()
 
-        wordlist_left = body.split(' ')
-        wordlist_right = wordlist_left # I only need to iterate seperately, not modify
+        wordlist_left = [word for word in body.split() if word not in common_words]
+        wordlist_right = wordlist_left.copy()
 
-        for ii in wordlist_left:
-            i = ii.strip()
-            if i not in common_words:
-                for jj in wordlist_right:
-                    j = jj.strip()
-                    if j not in common_words and i != j:
-                        tup = (i, j)
-                        tup_r = (j, i)
-                        if tup in wordpair_counts.keys():
-                            wordpair_counts[tup] += 1
-                        elif tup_r in wordpair_counts.keys():
-                            wordpair_counts[tup_r] += 1
-                        else:
-                            wordpair_counts[tup] = 1
+        wordpairs = set([(i,j) for i in wordlist_left for j in wordlist_right if i != j])
+
+        same_but_reversed = set()
+        for (i, j) in wordpairs:
+            if (j, i) in wordpairs and (i, j) not in same_but_reversed:
+                same_but_reversed.add((j, i))
+
+        for tup in wordpairs:
+            if tup in wordpair_counts: wordpair_counts[tup] += 1
+            else: wordpair_counts[tup] = 1
 
     return wordpair_counts
 

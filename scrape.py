@@ -6,33 +6,29 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from mysql.connector import connect, Error
 
+logs = 'logs'
 filefolder = 'logs/extracted-files'
 errorfolder = 'logs/error'
-logfolder = 'logs/verbose-scrapelog'
+verbose_scrapelog = 'verbose-scrapelog'
 start_time = datetime.now()
 
-boardfile = open('boards.json', 'r')
-boards = json.loads(boardfile.read())
-boardfile.close()
+boards = json.loads(open('boards.json').read())
 
 '''
 SCRAPE & WRITE
 '''
 print('scraping...')
-scrapelog_filename = logfolder + '/scrapelog-' + start_time.strftime('%Y-%m-%d_%H-%M-%S') + '.txt'
-scrapelog_file = open(scrapelog_filename, 'x')
+verboselogfile = 'scrapelog' + start_time.strftime('%Y-%m-%d_%H-%M-%S') + '.txt'
+scrapelog_filename = os.path.join(logs, verbose_scrapelog, verboselogfile)
+scrapelog_file = open(scrapelog_filename, 'w')
 scrapelog_file.write('scrape start ' + str(start_time) + '\n')
 scrapelog_file.write('boards:\n' )
 for key in boards.keys():
 	scrapelog_file.write(str(key) + '\n')
-scrapelog_file.write('\nstarted with these files already here:')
 
-extant_files = os.listdir(filefolder)
-json_files = []
-for f in extant_files:
-	if '.json' in f:
-		json_files.append(f)
-		scrapelog_file.write('\n' + f)
+scrapelog_file.write('\nstarted with these files already here:')
+json_files = [f for f in os.listdir(filefolder) if '.json' in f]
+for f in json_files: scrapelog_file.write('\n' + f)
 scrapelog_file.write('\n-----------')
 
 scrapelog_file.write('\n== scrape begins ==\n')
@@ -63,7 +59,7 @@ for r in jobs_results:
 		# sometimes we write files and then our insert fails
 		filename = board.replace(' ', '-') + '-' + get.filename(link)
 		scrapelog_file.write('\ngenerated filename: ' + filename)
-		if os.path.exists(filefolder + '/' + filename):
+		if os.path.exists(os.path.join(filefolder, filename)):
 			scrapelog_file.write('\nfile exists, skipping\n')
 			continue
 
@@ -72,15 +68,13 @@ for r in jobs_results:
 		job_dict['site'] = board
 		job_dict['filename'] = filename
 		job_dict['link'] = link
-		file = open(filefolder + '/' + filename, 'x')
-		file.write(json.dumps(job_dict))
-		file.close()
+		open(os.path.join(filefolder, filename), 'w').write(json.dumps(job_dict))
 		scrapelog_file.write('\nwrote file')
 		json_files.append(job_dict['filename'])
 
 		file_count += 1
 		scrapelog_file.write('\nfile count: ' + str(file_count))
-		time.sleep(2)
+		time.sleep(0.5)
 	else:
 		scrapelog_file.write('\npost_id already exists in db')
 
@@ -97,9 +91,7 @@ result_string += "\ntotal time: " + str(end_time - start_time)
 result_string += "\n" + str(file_count) + " files added"
 result_string += "\n============================="
 
-logfile = open("logs/scrapelog.txt", "a")
-logfile.write(result_string)
-logfile.close()
+open("logs/scrapelog.txt", "a").write(result_string)
 
 '''
 DB INSERT
@@ -108,10 +100,8 @@ print('checking & inserting...')
 scrapelog_file.write('\n== insert begins ==\n')
 # this is a separate step for ease of debugging
 for f in json_files:
-	filename = filefolder + '/' + f # os can concat these
-	file = open(filename, 'r')
-	job = json.loads(file.read()) # becomes dict
-	file.close()
+	filename = os.path.join(filefolder, f)
+	job = json.loads(open(filename).read())
 	scrapelog_file.write('\nloaded file: ' + filename)
 
 	match_id = db.get_previous_post_id(job)
