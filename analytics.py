@@ -35,21 +35,14 @@ def word_pairs():
     post_bodies = db.get_dataset_as_list('SELECT body FROM craigslist_jobs')
 
     for b in post_bodies:
-        body = b[0]
+        body = b[0].lower()
         for c in junk_char_list(): body = body.replace(c, ' ')
-        body = body.lower()
 
-        wordlist_left = [word for word in body.split() if word not in common_words]
-        wordlist_right = wordlist_left.copy()
+        words = set([word for word in body.split() if word not in common_words])
 
-        wordpairs = set([(i,j) for i in wordlist_left for j in wordlist_right if i != j])
+        pairs = set([tuple(sorted((i,j))) for i in words for j in words if i != j])
 
-        same_but_reversed = set()
-        for (i, j) in wordpairs:
-            if (j, i) in wordpairs and (i, j) not in same_but_reversed:
-                same_but_reversed.add((j, i))
-
-        for tup in wordpairs:
+        for tup in pairs:
             if tup in wordpair_counts: wordpair_counts[tup] += 1
             else: wordpair_counts[tup] = 1
 
