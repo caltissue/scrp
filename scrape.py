@@ -132,10 +132,11 @@ bodywords = analytics.wordcount('body')
 db.insert_records_from_tuples(bodywords, 'wordcount_body')
 scrapelog_file.write('\ninserted body wordcounts')
 
-print('starting crossjoin at ', datetime.now())
+print('starting wordpair count at ', datetime.now())
 wordpairs = analytics.word_pairs()
+print('wordpairs retrieved, insert starting at', datetime.now())
 db.insert_wordpair_counts(wordpairs)
-scrapelog_file.write('\ninserted wordpair crossjoin counts')
+scrapelog_file.write('\ninserted wordpair counts')
 
 scrapelog_file.close()
 print('finished at ', datetime.now())

@@ -54,10 +54,13 @@ def insert_records_from_tuples(list, table): # list of tuples
         print(e)
 
 def insert_wordpair_counts(wordpairs):
-    query = '''
+    querybase = '''
     INSERT INTO wordpairs (word1, word2, count)
-    VALUES ( '%s', '%s', %s )
+    VALUES
     '''
+    insert_list = []
+    for k in wordpairs:
+        insert_list.append("( '%s', '%s', %s )" % (k[0], k[1], wordpairs[k]))
     try:
         with connect(
             host='localhost',
@@ -66,8 +69,16 @@ def insert_wordpair_counts(wordpairs):
             database='scrp'
         ) as connection:
             with connection.cursor() as cursor:
-                for t in wordpairs:
-                    cursor.execute(query % (t[0], t[1], wordpairs[t]))
+                cursor.execute('SET autocommit=0;')
+                while insert_list:
+                    query = querybase + ' '
+                    insertcount = 100000
+                    for i in range(min(len(insert_list), insertcount)):
+                        query += insert_list[i] + ', '
+                    query = query[:-2] + ';'
+                    insert_list = insert_list[insertcount:]
+                    cursor.execute(query)
+                cursor.execute('COMMIT;')
                 connection.commit()
     except Error as e:
         print(e)
