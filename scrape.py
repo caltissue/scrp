@@ -108,11 +108,11 @@ for f in json_files:
 	if match_id:
 		scrapelog_file.write('\nthis is a repost; writing as repost')
 		db.note_repost(match_id, job['post_id'])
-		if os.path.exists(filename):
-			os.remove(filename)
 	else:
 		scrapelog_file.write('\nthis is a new post; inserting')
 		db.add_post(job)
+
+	if os.path.exists(filename): os.remove(filename)
 
 scrapelog_file.write('\n== insert ends ==\n')
 
@@ -124,6 +124,7 @@ db.truncate_table('wordcount_title')
 db.truncate_table('wordcount_body')
 db.truncate_table('wordpairs')
 
+print('inserting wordcounts at', datetime.now())
 titlewords = analytics.wordcount('title')
 db.insert_records_from_tuples(titlewords, 'wordcount_title')
 scrapelog_file.write('\ninserted title wordcounts')
@@ -132,11 +133,11 @@ bodywords = analytics.wordcount('body')
 db.insert_records_from_tuples(bodywords, 'wordcount_body')
 scrapelog_file.write('\ninserted body wordcounts')
 
-print('starting wordpair count at ', datetime.now())
+print('starting wordpair count at', datetime.now())
 wordpairs = analytics.word_pairs()
 print('wordpairs retrieved, insert starting at', datetime.now())
 db.insert_wordpair_counts(wordpairs)
 scrapelog_file.write('\ninserted wordpair counts')
 
 scrapelog_file.close()
-print('finished at ', datetime.now())
+print('finished at', datetime.now())

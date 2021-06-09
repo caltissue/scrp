@@ -28,7 +28,7 @@ def get_common_words():
     )
     '''
     commonwords = []
-    commonword_results = db.get_dataset_as_list(query)
+    commonword_results = db.execute_query(query)
     for c in commonword_results:
         commonwords.append(c[0])
 
@@ -39,7 +39,7 @@ def get_common_words():
 
 def word_pairs():
     wordpair_counts = {}
-    post_bodies = db.get_dataset_as_list('SELECT body FROM craigslist_jobs')
+    post_bodies = db.execute_query('SELECT body FROM craigslist_jobs')
     commons = get_common_words()
     okchars = ok_chars()
     for b in post_bodies:
@@ -70,7 +70,7 @@ def wordcount(column):
     wordcountlist = []
     commons = get_common_words()
     okchars = ok_chars()
-    titles = db.get_dataset_as_list('SELECT %s FROM craigslist_jobs' % column)
+    titles = db.execute_query('SELECT %s FROM craigslist_jobs' % column)
 
     for t in titles:
         title = t[0].lower()
