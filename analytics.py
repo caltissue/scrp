@@ -1,5 +1,12 @@
 import os
 import db_func as db
+import string
+
+def my_common_words():
+    return [
+    'but', 'and', 'so', 'if', 'because', 'a', '', ' ', '-', '--', 'has', 'one',
+    'well', 'then',
+    ]
 
 def junk_char_list():
     return [
@@ -7,6 +14,9 @@ def junk_char_list():
     '=', '•', '●', '"', '\n', '\r', '\t', '_', '“', '”', ';', '·', '📺', '👉',
     '‘', '`', '[', ']', '{', '}', ' +', '►', '✭',
     ]
+
+def ok_chars():
+    return string.ascii_lowercase + string.digits + string.whitespace
 
 def get_common_words():
     query = '''
@@ -22,23 +32,22 @@ def get_common_words():
     for c in commonword_results:
         commonwords.append(c[0])
 
+    for w in my_common_words():
+        commonwords.append(w)
+
     return commonwords
 
 def word_pairs():
-    common_words = get_common_words()
-    common_words.append('')
-    common_words.append(' ')
-    common_words.append('-')
-    common_words.append('--')
     wordpair_counts = {}
-
     post_bodies = db.get_dataset_as_list('SELECT body FROM craigslist_jobs')
-
+    commons = get_common_words()
+    okchars = ok_chars()
     for b in post_bodies:
         body = b[0].lower()
-        for c in junk_char_list(): body = body.replace(c, ' ')
 
-        words = set([word for word in body.split() if word not in common_words])
+        body = ''.join([c for c in body if c in okchars])
+
+        words = set([word for word in body.split() if word not in commons])
 
         pairs = set([tuple(sorted((i,j))) for i in words for j in words if i != j])
 
@@ -48,32 +57,33 @@ def word_pairs():
 
     return wordpair_counts
 
+def get_high_occurence_pairs(word, mincount):
+    pairs = word_pairs()
+    mytups = [t for t in pairs.keys() if word in t]
+    mypairs = {}
+    for t in mytups: mypairs[t] = pairs[t]
+    my_highoccurence_tups = [t for t in mypairs.keys() if mypairs[t] >= mincount]
+    return my_highoccurence_tups
+
 def wordcount(column):
     wordmap = {}
     wordcountlist = []
-
+    commons = get_common_words()
+    okchars = ok_chars()
     titles = db.get_dataset_as_list('SELECT %s FROM craigslist_jobs' % column)
+
     for t in titles:
-        title = t[0]
-        junk_chars = junk_char_list()
-        for char in junk_chars:
-            title = title.replace(char, ' ')
+        title = t[0].lower()
+        title = ''.join([c for c in title if c in okchars])
 
-        title = title.lower()
-        word_list = title.split(' ')
+        wordlist = set([word for word in title.split() if word not in commons])
 
-        for w in word_list:
-            w = w.replace('’', '')
-            w = w.strip()
-            if len(w) > 0:
-                if w in wordmap.keys():
-                    wordmap[w] += 1
-                else:
-                    wordmap[w] = 1
+        for word in wordlist:
+            if word in wordmap: wordmap[word] += 1
+            else: wordmap[word] = 1
 
-    for w in wordmap:
-        tup = (wordmap[w], w)
-        wordcountlist.append(tup)
+    for word in wordmap:
+        wordcountlist.append((wordmap[word], word))
 
     wordcountlist.sort(reverse=True)
     return wordcountlist
