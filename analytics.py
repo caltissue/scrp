@@ -4,6 +4,9 @@ import string
 
 ok_chars = string.ascii_lowercase + string.digits + string.whitespace
 
+'''
+    Creating data
+'''
 def get_common_words():
     commonword_res = db.execute_query('''
     SELECT word FROM wordcount_body
@@ -13,7 +16,7 @@ def get_common_words():
 
     commonwords.extend([
     'but', 'and', 'so', 'if', 'because', 'a', '', ' ', '-', '--', 'has', 'one',
-    'well', 'then',
+    'well', 'then', 'they', 'their', 'by'
     ])
     return commonwords
 
@@ -33,13 +36,6 @@ def word_pairs():
             else: wordpair_counts[tup] = 1
 
     return wordpair_counts
-
-def get_frequent_pairs(word, mincount):
-    pairs = word_pairs()
-    mytups = [t for t in pairs if word in t]
-    mypairs = {t: pairs[t] for t in mytups}
-    my_frequent_tups = [t for t in mypairs if mypairs[t] >= mincount]
-    return my_frequent_tups
 
 def wordcount(column):
     wordmap = {}
@@ -62,3 +58,29 @@ def wordcount(column):
 
     wordcountlist.sort(reverse=True)
     return wordcountlist
+
+'''
+    Queries against the final data
+'''
+
+def get_frequent_pairs(word, mincount):
+    return db.execute_query('''
+    SELECT word1, word2 FROM wordpairs
+    WHERE '%s' in (word1, word2)
+    AND count > %s
+    ''' % (word, mincount))
+
+def get_frequent_pairs_with_uncommon_words(word): # TODO this has 3-levels of subquery
+    return db.execute_query('''
+    WITH tops AS (
+        SELECT word FROM wordcount_body
+        WHERE word NOT IN (
+            SELECT word FROM wordcount_body
+            WHERE count > (SELECT COUNT(id) / 2 FROM craigslist_jobs)
+        )
+    ) SELECT * FROM wordpairs
+    WHERE %s in (word1, word2)
+    AND word1 NOT IN (SELECT * FROM tops)
+    AND word2 NOT IN (SELECT * FROM tops)
+    ORDER BY count DESC;
+    ''' % word)
