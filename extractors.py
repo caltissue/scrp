@@ -1,4 +1,4 @@
-import requests, json, functools
+import requests, json, functools, time
 from datetime import datetime
 from bs4 import BeautifulSoup, element
 from bs4.element import Tag
@@ -12,6 +12,7 @@ def filename(link):
 	return id + '.json'
 
 def job_description(link): # string link; returns dict
+	time.sleep(0.25)
 	id = post_id(link)
 
 	job_page = requests.get(link)
@@ -35,10 +36,10 @@ def job_description(link): # string link; returns dict
 				if isinstance(d, str):
 					bodystring += str(d)
 
-	time = soup.find(class_='date timeago')
-	time_contents = time.contents[0].strip(" \n")
+	posttime = soup.find(class_='date timeago')
+	time_contents = posttime.contents[0].strip(" \n")
 	time_contents_as_datetime = datetime.strptime(time_contents, '%Y-%m-%d %H:%M')
-	time_string = str(time_contents_as_datetime.strftime('%Y-%m-%d %H:%M:%S'))
+	time_string = time_contents_as_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
 	job_desc = {
 		'title': title.contents[0].replace("'", ""),

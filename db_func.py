@@ -48,7 +48,7 @@ def get_previous_post_id(newpost): # dict newpost; returns id of match if any
     post_results = execute_query('SELECT post_id, title, body FROM craigslist_jobs')
     posts = [{'post_id':r[0], 'title':r[0], 'body':r[2]} for r in post_results]
 
-    for p in posts: # this comes after to avoid return from try
+    for p in posts:
         title_match = SequenceMatcher(None, p['title'], newpost['title']).ratio()
         if title_match > .9:
             content_match = SequenceMatcher(None, p['body'], newpost['body']).ratio()
@@ -67,15 +67,14 @@ def note_repost(original_id, repost_id):
     ''' % (repost_id, original_id))
 
 def add_post(p): # dict post
-    q = '''
+    execute_query('''
     INSERT INTO craigslist_jobs
     (site, title, location, body, time, post_id, times_encountered)
     VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')
     ''' % (
-    p['site'], p['title'], p['location'], p['body'], p['time'], p['post_id'],
-    '1' # times_encountered (this is a new post in theory)
-    )
-    execute_query(q)
+        p['site'], p['title'], p['location'], p['body'],
+        p['time'], p['post_id'], '1'
+    ))
 
 '''
     INSERT_LARGE_QUERY_FROM_LIST
@@ -93,13 +92,18 @@ def insert_large_query_from_list(querybase, value_list):
             with connection.cursor() as cursor:
                 cursor.execute('SET autocommit=0;')
                 while value_list:
-                    query = querybase + ' '
-                    insertcount = 100000
-                    for i in range(min(len(value_list), insertcount)):
-                        query += value_list[i] + ', '
-                    query = query[:-2] + ';'
-                    value_list = value_list[insertcount:]
-                    cursor.execute(query)
+                    try:
+                        query = querybase + ' '
+                        insertcount = 100000
+                        insertrange = min(len(value_list), insertcount)
+                        for i in range(insertrange):
+                            query += value_list[i] + ', '
+                        query = query[:-2] + ';'
+                        value_list = value_list[insertcount:]
+                        cursor.execute(query)
+                    except Error:
+                        cursor.execute('ROLLBACK;')
+                        raise
                 cursor.execute('COMMIT;')
                 connection.commit()
     except Error as e:
@@ -111,15 +115,10 @@ def insert_large_query_from_list(querybase, value_list):
 
 def insert_records_from_tuples(t_list, table):
     querybase = "INSERT INTO %s (count, word) VALUES" % table
-    values = []
-    for t in t_list:
-        values.append("( %s, '%s' )" % (str(t[0]), t[1]))
+    values = ["( %s, '%s' )" % (str(t[0]), t[1]) for t in t_list]
     insert_large_query_from_list(querybase, values)
-
 
 def insert_wordpair_counts(wordpairs):
     querybase = "INSERT INTO wordpairs (word1, word2, count) VALUES"
-    values = []
-    for k in wordpairs:
-        values.append("( '%s', '%s', %s )" % (k[0], k[1], wordpairs[k]))
+    values = ["( '%s', '%s', %s )" % (k[0], k[1], wordpairs[k]) for k in wordpairs]
     insert_large_query_from_list(querybase, values)

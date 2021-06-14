@@ -1,37 +1,23 @@
-import requests, json, time, os
-import extractors as get
-import db_func as db
-import analytics
+import requests, json, os
+import extractors as get, db_func as db, analytics, log
 from datetime import datetime
 from bs4 import BeautifulSoup
 from mysql.connector import connect, Error
 
-logs = 'logs'
-filefolder = 'logs/extracted-files'
-errorfolder = 'logs/error'
-verbose_scrapelog = 'verbose-scrapelog'
-start_time = datetime.now()
-
+starttime = datetime.now()
 boards = json.loads(open('boards.json').read())
 
 '''
 SCRAPE & WRITE
 '''
 print('scraping...')
-verboselogfile = 'scrapelog' + start_time.strftime('%Y-%m-%d_%H-%M-%S') + '.txt'
-scrapelog_filename = os.path.join(logs, verbose_scrapelog, verboselogfile)
-scrapelog_file = open(scrapelog_filename, 'w')
-scrapelog_file.write('scrape start ' + str(start_time) + '\n')
-scrapelog_file.write('boards:\n' )
-for key in boards.keys():
-	scrapelog_file.write(str(key) + '\n')
+verboselog = log.get_verboselog(starttime.strftime('%Y-%m-%d_%H-%M-%S'))
+log.write(verboselog, header='boards', content=list(boards.keys()))
 
-scrapelog_file.write('\nstarted with these files already here:')
-json_files = [f for f in os.listdir(filefolder) if '.json' in f]
-for f in json_files: scrapelog_file.write('\n' + f)
-scrapelog_file.write('\n-----------')
+json_files = [f for f in os.listdir(log.FILES) if '.json' in f]
+log.write(verboselog, 'started with these here:', json_files)
 
-scrapelog_file.write('\n== scrape begins ==\n')
+log.write(verboselog, '== scrape begins ==')
 jobs_results = []
 for board in boards.keys():
 	results_page = requests.get(boards[board])
@@ -51,93 +37,84 @@ for r in jobs_results:
 	board = r['board']
 	anchor = r['result'].a
 	link = anchor['href']
-	scrapelog_file.write('\njob link: ' + link)
-
 	id = get.post_id(link)
-	scrapelog_file.write('\nwith id: ' + str(id))
+
 	if id not in post_ids:
-		# sometimes we write files and then our insert fails
+		# check a file doesn't already exist for this post
 		filename = board.replace(' ', '-') + '-' + get.filename(link)
-		scrapelog_file.write('\ngenerated filename: ' + filename)
-		if os.path.exists(os.path.join(filefolder, filename)):
-			scrapelog_file.write('\nfile exists, skipping\n')
+		log.write(verboselog, 'job info', [
+			'link: %s\n' % link,
+			'post id: %s\n' % id,
+			'filename: %s\n' % filename
+		])
+		if os.path.exists(os.path.join(log.FILES, filename)):
+			log.write(verboselog, 'above file already exists, skipped')
 			continue
 
-		# here, we know the file doesn't exist already
-		job_dict = get.job_description(link)
-		job_dict['site'] = board
-		job_dict['filename'] = filename
-		job_dict['link'] = link
-		open(os.path.join(filefolder, filename), 'w').write(json.dumps(job_dict))
-		scrapelog_file.write('\nwrote file')
-		json_files.append(job_dict['filename'])
+		# add file
+		job = get.job_description(link)
+		job['site'] = board
+		job['filename'] = filename
+		job['link'] = link
+		open(os.path.join(log.FILES, filename), 'w').write(json.dumps(job))
+		json_files.append(filename)
 
 		file_count += 1
-		scrapelog_file.write('\nfile count: ' + str(file_count))
-		time.sleep(0.5)
+		log.write(verboselog, 'wrote file, filecount = %s' % str(file_count))
 	else:
-		scrapelog_file.write('\npost_id already exists in db')
+		log.write(verboselog, 'post_id already exists in db')
 
-	scrapelog_file.write('\n')
+log.write(verboselog, '== scrape ends ==')
+endtime = datetime.now()
 
-scrapelog_file.write('\n\n== scrape ends ==\n')
-end_time = datetime.now()
+log.write(os.path.join(log.ROOT,'scrapelog.txt'), '+ scrape job:', [
+	'started %s' % starttime.strftime("%Y-%m-%d %H:%M"),
+	'ended %s' % endtime.strftime("%Y-%m-%d %H:%M"),
+	'total time: %s' % str(endtime - starttime),
+	'%s files added' % str(file_count),
+	'============================='
+])
 
-result_string = ""
-result_string += "\n+ scrape job:"
-result_string += "\nstarted " + str(start_time.strftime("%Y-%m-%d %H:%M"))
-result_string += "\nended " + str(end_time.strftime("%Y-%m-%d %H:%M"))
-result_string += "\ntotal time: " + str(end_time - start_time)
-result_string += "\n" + str(file_count) + " files added"
-result_string += "\n============================="
-
-open("logs/scrapelog.txt", "a").write(result_string)
 
 '''
 DB INSERT
 '''
 print('checking & inserting...')
-scrapelog_file.write('\n== insert begins ==\n')
-# this is a separate step for ease of debugging
+log.write(verboselog, '== insert begins ==')
 for f in json_files:
-	filename = os.path.join(filefolder, f)
+	filename = os.path.join(log.FILES, f)
 	job = json.loads(open(filename).read())
-	scrapelog_file.write('\nloaded file: ' + filename)
 
 	match_id = db.get_previous_post_id(job)
+	status = 'repost noted'
 	if match_id:
-		scrapelog_file.write('\nthis is a repost; writing as repost')
 		db.note_repost(match_id, job['post_id'])
 	else:
-		scrapelog_file.write('\nthis is a new post; inserting')
+		status = 'new post inserted'
 		db.add_post(job)
 
-	if os.path.exists(filename): os.remove(filename)
+	log.write(verboselog, 'loaded file:', [filename, status])
+	if os.path.exists(filename): os.remove(filename) # Log??
 
-scrapelog_file.write('\n== insert ends ==\n')
+log.write(verboselog, '== insert ends ==')
 
 '''
 ANALYTICS
 '''
-print('running analytics...')
-db.truncate_table('wordcount_title')
-db.truncate_table('wordcount_body')
-db.truncate_table('wordpairs')
+for table in ['wordcount_title', 'wordcount_body', 'wordpairs']:
+	db.truncate_table(table)
 
-print('inserting wordcounts at', datetime.now())
+print('starting wordcounts', datetime.now())
 titlewords = analytics.wordcount('title')
 db.insert_records_from_tuples(titlewords, 'wordcount_title')
-scrapelog_file.write('\ninserted title wordcounts')
 
 bodywords = analytics.wordcount('body')
 db.insert_records_from_tuples(bodywords, 'wordcount_body')
-scrapelog_file.write('\ninserted body wordcounts')
 
-print('starting wordpair count at', datetime.now())
+print('starting wordpair count', datetime.now())
 wordpairs = analytics.word_pairs()
-print('wordpairs retrieved, insert starting at', datetime.now())
+print('wordpair insert', datetime.now())
 db.insert_wordpair_counts(wordpairs)
-scrapelog_file.write('\ninserted wordpair counts')
 
-scrapelog_file.close()
+log.write(verboselog, 'inserted:', ['title wordcounts', 'body wordcounts', 'wordpair counts'])
 print('finished at', datetime.now())
